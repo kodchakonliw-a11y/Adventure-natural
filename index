@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mario: Wildlife Adventure</title>
+<style>
+:root{--ink:#1d1d2b;--red:#e8382f;--yel:#ffcb2e;--grn:#35b24a;--blu:#2f7de1;--bg:#12301f;--pn:#fff8e1}
+@media (prefers-color-scheme:dark){:root{--pn:#fff3cf}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{margin:0;height:100%;background:var(--bg);font-family:"Trebuchet MS","Tahoma",sans-serif;color:var(--ink);overflow:hidden}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#app{position:relative;width:100%;max-width:960px;margin:0 auto;height:100%;display:flex;align-items:center}
+#wrap{position:relative;width:100%;aspect-ratio:2/1;max-height:100%;background:#000;border:4px solid var(--ink)}
+canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
+.scr{position:absolute;inset:0;background:rgba(18,48,31,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:10px;overflow:auto;text-align:center;color:#fff}
+.hide{display:none!important}
+h1{margin:0;font-size:clamp(20px,5vw,40px);color:var(--yel);text-shadow:0 4px 0 var(--red),0 6px 0 var(--ink)}
+.box{background:var(--pn);color:var(--ink);border:4px solid var(--ink);border-radius:10px;box-shadow:0 5px 0 var(--ink);padding:10px 14px;max-width:560px;width:100%;font-size:clamp(12px,2.4vw,16px)}
+input{font:inherit;padding:8px;border:3px solid var(--ink);border-radius:8px;width:100%;margin:3px 0}
+.btn{font:inherit;font-weight:700;font-size:clamp(14px,2.8vw,18px);padding:8px 18px;border:4px solid var(--ink);border-radius:10px;background:var(--grn);color:#fff;box-shadow:0 5px 0 var(--ink);cursor:pointer}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+.btn.y{background:var(--yel);color:var(--ink)}.btn.r{background:var(--red)}.btn.b{background:var(--blu)}
+.opt{display:block;width:100%;margin:6px 0;text-align:left;background:#fff;color:var(--ink)}
+.opt.ok{background:#8be28b}.opt.no{background:#ff9a94}
+#hud{position:absolute;top:4px;left:4px;right:4px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none;font-weight:700;font-size:clamp(11px,2.4vw,16px)}
+#hud span{background:var(--pn);border:3px solid var(--ink);border-radius:8px;padding:1px 7px}
+#hud button{pointer-events:auto;margin-left:auto;border:3px solid var(--ink);border-radius:8px;background:var(--yel);font-size:16px}
+#touch{position:absolute;bottom:6px;left:6px;right:6px;display:none;justify-content:space-between;pointer-events:none}
+#touch div{display:flex;gap:10px}
+#touch b{pointer-events:auto;width:clamp(48px,11vw,70px);height:clamp(48px,11vw,70px);border:4px solid var(--ink);border-radius:14px;background:rgba(255,203,46,.85);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 0 var(--ink)}
+@media (pointer:coarse){#touch{display:flex}}
+table{width:100%;border-collapse:collapse;font-size:clamp(10px,2.2vw,14px)}
+td,th{border:2px solid var(--ink);padding:2px 4px}th{background:var(--yel)}
+</style>
+</head>
+<body>
+<div id="app"><div id="wrap">
+<canvas id="c" width="800" height="400"></canvas>
+<div id="hud" class="hide"><span id="hL"></span><span id="hH"></span><span id="hC"></span><span id="hS"></span><span id="hT"></span><button id="mute">🔊</button></div>
+<div id="touch"><div><b id="bl">◀</b><b id="br">▶</b></div><b id="bj">⬆</b></div>
+
+<!-- หน้าเริ่มเกม / ระบุตัวตน -->
+<div id="menu" class="scr">
+<h1>🍄 Mario: Wildlife Adventure</h1>
+<div style="color:var(--yel);font-weight:700">มาริโอเก็บเหรียญ ตามรอยสัตว์ป่า · ม.6</div>
+<div class="box">
+<input id="nm" placeholder="ชื่อ-นามสกุล" maxlength="40">
+<input id="sid" placeholder="เลขที่ / ห้อง (เช่น 6/2 เลขที่ 15)" maxlength="20">
+<div style="margin-top:6px;font-size:.9em">⬅️➡️ / A D เดิน · ␣ / ⬆ กระโดด · เก็บเหรียญ 🪙 · ชนสัตว์ป่าเพื่อตอบคำถาม · หลบหนาม ▲ · ไปถึงธงให้ผ่านด่าน</div>
+</div>
+<div><button class="btn" id="go">▶ เริ่มเล่น</button> <button class="btn b" id="dsh">📊 แดชบอร์ด</button></div>
+</div>
+
+<!-- หน้าตอบคำถาม -->
+<div id="quiz" class="scr hide"><div class="box" style="text-align:left">
+<div id="qh" style="font-weight:700;font-size:1.15em"></div><div id="qq" style="margin:4px 0"></div><div id="qo"></div>
+<div id="qe" class="hide" style="background:#e6f4ff;border:3px solid var(--blu);border-radius:8px;padding:6px"></div>
+<div style="text-align:center;margin-top:6px"><button class="btn y hide" id="qn">ไปต่อ ▶</button></div></div></div>
+
+<!-- หน้าสรุปผล -->
+<div id="end" class="scr hide"><h1 id="eh"></h1><div class="box" id="eb"></div><div><button class="btn" id="en"></button> <button class="btn b" id="eh2">📊 แดชบอร์ด</button></div></div>
+
+<!-- แดชบอร์ด -->
+<div id="dash" class="scr hide"><h1>📊 แดชบอร์ด</h1><div class="box" id="db" style="max-height:70%;overflow:auto"></div><button class="btn r" id="dc">ปิด</button></div>
+</div></div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const cv=$('c'),g=cv.getContext('2d');
+const W=800,H=400,GY=340;           // ความกว้าง/สูงของฉาก และระดับพื้น
+
+/* ===== ข้อมูลคำถาม (แก้ไขได้ที่นี่) =====
+   e=อีโมจิสัตว์, n=ชื่อ, q=คำถาม, c=ตัวเลือก, a=index คำตอบที่ถูก (เริ่มที่ 0), x=คำอธิบาย */
+const Q=[
+{e:'🐅',n:'เสือโคร่ง',q:'ความหลากหลายทางชีวภาพจำแนกได้เป็นกี่ระดับหลัก?',c:['1 ระดับ','2 ระดับ','3 ระดับ','5 ระดับ'],a:2,x:'3 ระดับ: ความหลากหลายทางพันธุกรรม ชนิดพันธุ์ และระบบนิเวศ'},
+{e:'🐘',n:'ช้างป่า',q:'ถิ่นที่อยู่อาศัย (habitat) หมายถึงอะไร?',c:['อาหารของสัตว์','บริเวณที่สิ่งมีชีวิตอาศัยอยู่ มีปัจจัยเหมาะสมต่อการดำรงชีวิต','ฤดูกาลที่สัตว์อพยพ','เฉพาะบ้านของมนุษย์'],a:1,x:'ถิ่นที่อยู่อาศัยคือสถานที่ที่สิ่งมีชีวิตอาศัยอยู่และมีปัจจัยต่าง ๆ เหมาะสม'},
+{e:'🦜',n:'นกเงือก',q:'ป่าแห่งหนึ่งมีสัตว์ พืช และเห็ดราหลายชนิด จัดเป็นความหลากหลายระดับใด?',c:['พันธุกรรม','ชนิดพันธุ์','ระบบนิเวศ','ประชากร'],a:1,x:'จำนวนและความแตกต่างของชนิด (species) ในพื้นที่ คือความหลากหลายของชนิดพันธุ์'},
+{e:'🐾',n:'รอยเท้าสัตว์',q:'การศึกษารอยเท้าและมูลสัตว์ช่วยให้ทราบข้อมูลใดโดยไม่รบกวนสัตว์?',c:['เฉพาะอายุของต้นไม้','ชนิด ขนาด และกิจกรรมของสัตว์ในพื้นที่','อุณหภูมิของน้ำทะเล','จำนวนดาวบนฟ้า'],a:1,x:'ร่องรอยบอกชนิด ทิศทางการเดิน และพฤติกรรม เป็นวิธีสำรวจที่รบกวนน้อย'},
+{e:'🦇',n:'ค้างคาว',q:'ค้างคาวหากินกลางคืนและใช้คลื่นเสียงนำทาง เป็นการปรับตัวเพื่ออะไร?',c:['ไม่ใช่การปรับตัว','เพิ่มโอกาสอยู่รอด หาอาหารและหลบศัตรู','เพราะอยากทำ','ถ่ายทอดไม่ได้เลย'],a:1,x:'การปรับตัวทางโครงสร้าง สรีรวิทยา และพฤติกรรม ช่วยให้อยู่รอดและสืบพันธุ์ได้'},
+{e:'🦎',n:'กิ้งก่า',q:'การพรางตัว (camouflage) ช่วยสัตว์ในข้อใดมากที่สุด?',c:['หลบผู้ล่าและซ่อนตัวเพื่อล่าเหยื่อ','ทำให้ตัวใหญ่ขึ้น','ช่วยย่อยอาหาร','ทำให้ไม่ต้องกินอาหาร'],a:0,x:'สีและลวดลายกลมกลืนกับสิ่งแวดล้อม ลดโอกาสถูกพบ'},
+{e:'🦌',n:'กวางป่า',q:'กวางกินหญ้า กวางมีบทบาทใดในห่วงโซ่อาหาร?',c:['ผู้ผลิต','ผู้บริโภคปฐมภูมิ','ผู้บริโภคทุติยภูมิ','ผู้ย่อยสลาย'],a:1,x:'กวางกินพืช จึงเป็นผู้บริโภคปฐมภูมิ'},
+{e:'🐍',n:'งูเห่า',q:'หญ้า → ตั๊กแตน → กบ → งู งูเป็นผู้บริโภคลำดับที่เท่าใด?',c:['ปฐมภูมิ','ทุติยภูมิ','ตติยภูมิ','ผู้ผลิต'],a:2,x:'ตั๊กแตน=ปฐมภูมิ กบ=ทุติยภูมิ งู=ตติยภูมิ'},
+{e:'🍄',n:'เห็ดรา',q:'ผู้ย่อยสลายมีบทบาทสำคัญอย่างไรในระบบนิเวศ?',c:['สร้างอาหารจากแสง','ย่อยซากและคืนธาตุอาหารสู่ระบบนิเวศ','ล่าสัตว์ใหญ่','ควบคุมอุณหภูมิโลก'],a:1,x:'การย่อยสลายทำให้ธาตุอาหารหมุนเวียนกลับสู่ดินและผู้ผลิต'},
+{e:'🐯',n:'เสือบาดเจ็บ',q:'พบสัตว์ป่าบาดเจ็บริมทาง ควรทำอย่างไรเหมาะสมที่สุด?',c:['จับกลับบ้าน','ให้อาหารทันที','รักษาระยะห่างและแจ้งเจ้าหน้าที่','ไล่เข้าป่าเอง'],a:2,x:'ควรคำนึงถึงความปลอดภัยของคนและสัตว์ และให้ผู้เชี่ยวชาญดำเนินการ'},
+{e:'🐆',n:'เสือดาว',q:'เป้าหมายหลักของพื้นที่อนุรักษ์ เช่น อุทยานแห่งชาติ คือข้อใด?',c:['สร้างรีสอร์ตให้มากที่สุด','คุ้มครองทรัพยากรธรรมชาติและสัตว์ป่า','เปิดล่าสัตว์เสรี','ขยายพื้นที่เกษตรทั้งหมด'],a:1,x:'พื้นที่อนุรักษ์ช่วยรักษาถิ่นที่อยู่อาศัยและความหลากหลายทางชีวภาพ'},
+{e:'🐢',n:'เต่าทะเล',q:'การสูญเสียถิ่นที่อยู่อาศัยส่งผลหลักต่อสัตว์ป่าอย่างไร?',c:['ประชากรเพิ่มขึ้นเสมอ','ประชากรลดลงและเสี่ยงสูญพันธุ์','ไม่มีผลใด ๆ','ทำให้ห่วงโซ่อาหารแข็งแรงขึ้น'],a:1,x:'สัตว์ขาดที่หลบภัย อาหาร และแหล่งสืบพันธุ์'}];
+
+/* ===== ข้อมูลด่าน =====
+   gaps=หลุม[x1,x2], pl=แพลตฟอร์ม[x,y,กว้าง], hz=หนาม[x,กว้าง], an=[x, ดัชนีคำถามใน Q] */
+const LV=[
+{name:'ป่ามหัศจรรย์',sky:['#7ed6ff','#d6f5ff'],hill:'#4aa84a',len:2000,time:100,gaps:[[600,680],[1300,1390]],pl:[[300,260,110],[820,250,130],[1000,200,100],[1500,260,130]],hz:[[1100,40]],an:[[450,0],[1000,1],[1750,2]]},
+{name:'ตามรอยสัตว์ป่า',sky:['#ffd28a','#fff1cf'],hill:'#7a9a3a',len:2300,time:100,gaps:[[500,590],[1100,1200],[1800,1890]],pl:[[260,260,100],[700,250,120],[1250,240,120],[1450,190,100],[2000,260,110]],hz:[[900,40],[1600,50]],an:[[400,3],[1350,4],[2150,5]]},
+{name:'ผจญภัยในห่วงโซ่อาหาร',sky:['#9bb6ff','#e0e8ff'],hill:'#2f8a5a',len:2600,time:110,gaps:[[450,540],[900,1010],[1500,1600],[2100,2200]],pl:[[250,250,100],[700,240,110],[1250,250,110],[1800,230,120],[2300,260,100]],hz:[[1100,50],[1700,40],[2400,40]],an:[[350,6],[1150,7],[2000,8]]},
+{name:'ผู้พิทักษ์ผืนป่า',sky:['#2b3a6b','#6b5aa0'],hill:'#1f5a3a',len:2900,time:120,gaps:[[420,520],[850,970],[1350,1470],[1900,2020],[2450,2560]],pl:[[230,250,100],[650,240,100],[1100,230,110],[1620,240,110],[2200,230,120],[2650,260,100]],hz:[[700,40],[1250,50],[1750,50],[2300,40]],an:[[330,9],[1000,10],[2100,11]]}];
+
+/* ===== ตัวแปรสถานะ ===== */
+let S,L,P,coins,ans,cam,keys={l:0,r:0,j:0},run=false,inv=0,cp=40,last=0,tick=0,qAct=null,lvT=0;
+const DB='wl4_records';
+const getDB=()=>{try{return JSON.parse(localStorage.getItem(DB))||[]}catch(e){return []}};
+const putDB=r=>{try{const a=getDB();a.push(r);localStorage.setItem(DB,JSON.stringify(a.slice(-200)))}catch(e){}};
+
+/* ===== เสียง (WebAudio สังเคราะห์เอง ไม่ใช้ไฟล์) ===== */
+let AC=null,muted=false,mi=0;
+const MEL=[262,330,392,330,262,330,392,523,349,440,523,440,349,440,523,659,392,494,587,494,330,392,494,392,262,330,392,330,196,247,294,247];
+function audio(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();setInterval(music,230)}catch(e){}}if(AC&&AC.state==='suspended')AC.resume()}
+function beep(f,d=.1,t='square',v=.05){if(!AC||muted)return;const o=AC.createOscillator(),a=AC.createGain();o.type=t;o.frequency.value=f;a.gain.value=v;o.connect(a);a.connect(AC.destination);o.start();a.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.stop(AC.currentTime+d)}
+function music(){if(!run&&!qAct)return;const n=MEL[mi++%MEL.length];beep(n,.2,'triangle',.035);if(mi%2==0)beep(n/2,.2,'square',.015)}
+$('mute').onclick=()=>{muted=!muted;$('mute').textContent=muted?'🔇':'🔊'};
+
+/* ===== เริ่มเกม / โหลดด่าน ===== */
+$('go').onclick=()=>{
+  const n=$('nm').value.trim();if(!n){$('nm').focus();$('nm').style.background='#ffd0cc';return}
+  audio();S={name:n,id:$('sid').value.trim(),lv:0,score:0,coins:0,corr:0,tot:0,lives:3,secs:0,start:Date.now()};
+  $('menu').classList.add('hide');loadLv();
+};
+function loadLv(){
+  L=LV[S.lv];P={x:40,y:200,vy:0,f:1,on:0};cp=40;inv=0;cam=0;lvT=L.time;
+  coins=[];const bad=x=>L.gaps.some(([a,b])=>x>a-20&&x<b+20);
+  for(let x=120;x<L.len-100;x+=130)if(!bad(x))coins.push([x,GY-40,0]);
+  L.pl.forEach(([x,y,w])=>{for(let i=0;i<3;i++)coins.push([x+w*(i+1)/4-8,y-30,0])});
+  ans=L.an.map(([x,q])=>({x,q,done:0}));
+  $('hud').classList.remove('hide');run=true;hud();last=performance.now();requestAnimationFrame(loop);
+}
+function hud(){$('hL').textContent='ด่าน '+(S.lv+1)+'/4';$('hH').textContent='❤️'.repeat(S.lives);$('hC').textContent='🪙 '+S.coins;$('hS').textContent='⭐ '+S.score;$('hT').textContent='⏱ '+Math.ceil(lvT)}
+
+/* ===== ลูปเกม ===== */
+function loop(now){
+  if(!run)return;
+  const dt=Math.min(2.5,(now-last)/16.67);last=now;
+  step(dt);draw();tick++;if(tick%6==0)hud();
+  requestAnimationFrame(loop);
+}
+function step(dt){
+  const d=keys.r-keys.l;P.x+=d*4.2*dt;if(d)P.f=d;P.x=Math.max(0,Math.min(L.len,P.x));
+  if(keys.j&&P.on){P.vy=-12.5;P.on=0;beep(520,.12)}
+  const pf=P.y+32;P.vy+=.62*dt;P.y+=P.vy*dt;P.on=0;
+  const f=P.y+32,cx=P.x+12;
+  if(P.vy>=0){ // ลงจอดบนพื้น/แพลตฟอร์ม (ทะลุจากด้านล่างได้)
+    let top=null;
+    if(!L.gaps.some(([a,b])=>cx>a&&cx<b)&&pf<=GY+2&&f>=GY)top=GY;
+    for(const[x,y,w]of L.pl)if(cx>x-6&&cx<x+w+6&&pf<=y+2&&f>=y)top=y;
+    if(top!=null){P.y=top-32;P.vy=0;P.on=1}
+  }
+  if(P.y>450)return hurt();
+  inv-=dt;lvT-=dt/60;S.secs+=dt/60;
+  if(lvT<=0){lvT=30;return hurt()}
+  for(const c of coins)if(!c[2]&&Math.abs(c[0]-cx)<20&&Math.abs(c[1]-(P.y+16))<26){c[2]=1;S.coins++;S.score+=10;beep(988,.08);beep(1318,.12)}
+  if(inv<=0)for(const[x,w]of L.hz)if(cx>x-6&&cx<x+w+6&&f>GY-18)return hurt();
+  for(const a of ans)if(!a.done&&Math.abs(a.x-cx)<34&&f>GY-60){return ask(a)}
+  if(P.x>=L.len-60)finish();
+  cam=Math.max(0,Math.min(L.len+100-W,P.x-300));
+}
+function hurt(){
+  S.lives--;inv=90;beep(150,.3,'sawtooth');
+  if(S.lives<=0)return over();
+  P.x=cp;P.y=200;P.vy=0;
+}
+
+/* ===== ระบบคำถาม ===== */
+function ask(a){
+  run=false;qAct=a;const q=Q[a.q];
+  $('qh').textContent=q.e+' พบ'+q.n+'!';$('qq').textContent=q.q;
+  const o=$('qo');o.innerHTML='';$('qe').classList.add('hide');$('qn').classList.add('hide');
+  q.c.map((t,i)=>[t,i]).sort(()=>Math.random()-.5).forEach(([t,i],k)=>{
+    const b=document.createElement('button');b.className='btn opt';b.textContent='ABCD'[k]+'. '+t;
+    b.onclick=()=>{
+      [...o.children].forEach(x=>x.disabled=true);S.tot++;
+      if(i===q.a){b.classList.add('ok');S.corr++;S.score+=100;beep(784,.15);beep(1046,.25)}
+      else{b.classList.add('no');beep(200,.3,'sawtooth');[...o.children].forEach(x=>{if(x.dataset.ok)x.classList.add('ok')})}
+      $('qe').textContent='💡 '+q.x;$('qe').classList.remove('hide');$('qn').classList.remove('hide');
+    };
+    if(i===q.a)b.dataset.ok=1;o.appendChild(b);
+  });
+  $('quiz').classList.remove('hide');
+}
+$('qn').onclick=()=>{$('quiz').classList.add('hide');qAct.done=1;cp=qAct.x;qAct=null;run=true;last=performance.now();hud();requestAnimationFrame(loop)};
+
+/* ===== สรุปผลด่าน / เกม ===== */
+function finish(){
+  run=false;const bonus=Math.floor(lvT)*3;S.score+=bonus;hud();beep(659,.15);beep(784,.15);beep(1046,.3);
+  const last4=S.lv===3;
+  show(last4?'🏆 ผ่านครบทุกด่าน!':'⭐ ผ่านด่าน '+(S.lv+1),
+    `<b>${L.name}</b><br>โบนัสเวลา +${bonus}<br>🪙 ${S.coins} · ⭐ ${S.score} · ตอบถูก ${S.corr}/${S.tot}`+(last4?'<br><b>'+title()+'</b>':''),
+    last4?'ดูสรุปผล':'ด่านถัดไป ▶',()=>{if(last4){save();$('end').classList.add('hide');dash()}else{S.lv++;$('end').classList.add('hide');loadLv()}});
+  if(last4)save();
+}
+function over(){run=false;save();show('💔 จบเกม',`ผ่านถึงด่าน ${S.lv+1}<br>🪙 ${S.coins} · ⭐ ${S.score} · ตอบถูก ${S.corr}/${S.tot}`,'เล่นใหม่',()=>{$('end').classList.add('hide');$('menu').classList.remove('hide');$('hud').classList.add('hide')})}
+function title(){const p=S.tot?S.corr/S.tot:0;return p>=.8?'🌳 ผู้พิทักษ์ผืนป่า':p>=.5?'🧭 นักสำรวจสัตว์ป่า':'🌱 ผู้เริ่มต้นผจญภัย'}
+function show(h,b,btn,fn){$('eh').textContent=h;$('eb').innerHTML=b;$('en').textContent=btn;$('en').onclick=fn;$('end').classList.remove('hide')}
+let saved=0;function save(){if(S.saved)return;S.saved=1;putDB({n:S.name,id:S.id,sc:S.score,co:S.coins,ok:S.corr,tt:S.tot,lv:S.lv+1,s:Math.round(S.secs),d:new Date().toLocaleDateString('th-TH')})}
+
+/* ===== แดชบอร์ด (รายบุคคล + ตารางคะแนน) ===== */
+function dash(){
+  const r=getDB(),nm=(S&&S.name)||$('nm').value.trim();
+  const mine=r.filter(x=>x.n===nm).reverse().slice(0,8);
+  const best={};r.forEach(x=>{if(!best[x.n]||x.sc>best[x.n].sc)best[x.n]=x});
+  const top=Object.values(best).sort((a,b)=>b.sc-a.sc).slice(0,8);
+  const row=x=>`<tr><td>${esc(x.n)}</td><td>${x.lv}</td><td>${x.sc}</td><td>${x.co}</td><td>${x.tt?Math.round(x.ok*100/x.tt):0}%</td><td>${Math.floor(x.s/60)}:${String(x.s%60).padStart(2,'0')}</td></tr>`;
+  const head='<tr><th>ชื่อ</th><th>ด่าน</th><th>คะแนน</th><th>🪙</th><th>ถูก</th><th>เวลา</th></tr>';
+  $('db').innerHTML=`<b>📈 ประวัติของ ${esc(nm||'-')}</b><table>${head}${mine.map(row).join('')||'<tr><td colspan=6>ยังไม่มีข้อมูล</td></tr>'}</table><br><b>🏅 อันดับสูงสุด (เครื่องนี้)</b><table>${head}${top.map(row).join('')||'<tr><td colspan=6>ยังไม่มีข้อมูล</td></tr>'}</table>`;
+  $('dash').classList.remove('hide');
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('dsh').onclick=dash;$('eh2').onclick=dash;$('dc').onclick=()=>$('dash').classList.add('hide');
+
+/* ===== การวาด ===== */
+function draw(){
+  const s=L.sky.length?L.sky:0,gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,L.sky[0]);gr.addColorStop(1,L.sky[1]);
+  g.fillStyle=gr;g.fillRect(0,0,W,H);
+  g.fillStyle=L.hill;for(let i=-1;i<8;i++){const x=i*220-(cam*.3%220);g.beginPath();g.arc(x+110,GY+40,120+(i%3)*20,Math.PI,0);g.fill()}
+  g.font='34px serif';g.textBaseline='alphabetic';
+  for(let i=0;i<7;i++){const x=i*170-(cam*.6%170);g.fillText('🌲',x,GY+4)}
+  g.save();g.translate(-cam,0);
+  // พื้น (เว้นหลุม)
+  let x0=0;const edges=[...L.gaps,[L.len+200,L.len+200]];
+  for(const[a,b]of edges){brick(x0,GY,a-x0,60,'#a0643a');g.fillStyle='#3cb043';g.fillRect(x0,GY,a-x0,8);x0=b}
+  for(const[x,y,w]of L.pl)brick(x,y,w,14,'#d98a3d');
+  g.fillStyle='#555';for(const[x,w]of L.hz)for(let i=0;i<w;i+=10){g.beginPath();g.moveTo(x+i,GY);g.lineTo(x+i+5,GY-18);g.lineTo(x+i+10,GY);g.fill()}
+  g.font='22px serif';const bob=Math.sin(tick/10)*3;
+  for(const c of coins)if(!c[2])g.fillText('🪙',c[0]-11,c[1]+bob);
+  g.font='40px serif';
+  for(const a of ans)if(!a.done){g.fillText(Q[a.q].e,a.x-20,GY-4+Math.sin(tick/12)*3);g.font='20px serif';g.fillText('❓',a.x-8,GY-52);g.font='40px serif'}
+  g.fillStyle='#fff';g.fillRect(L.len,GY-110,5,110);g.fillStyle='#e8382f';g.fillRect(L.len+5,GY-110,40,26);g.font='24px serif';g.fillText('🏁',L.len-8,GY-112);
+  if(inv<=0||tick%6<3)mario();
+  g.restore();
+}
+function brick(x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h);g.fillStyle='rgba(0,0,0,.25)';for(let j=0;j<h;j+=14){g.fillRect(x,y+j,w,2);for(let i=((j/14)%2)*16;i<w;i+=32)g.fillRect(x+i,y+j,2,14)}g.strokeStyle='#1d1d2b';g.lineWidth=2;g.strokeRect(x,y,w,h)}
+function mario(){ // ตัวละครสไตล์พิกเซลวาดจากสี่เหลี่ยม
+  const x=P.x,y=P.y,f=P.f,r=(a,b,w,h,c)=>{g.fillStyle=c;g.fillRect(f>0?x+a:x+24-a-w,y+b,w,h)};
+  const w=P.on?Math.sin(tick/3)*(keys.l||keys.r?3:0):0;
+  r(0,0,22,8,'#e8382f');r(14,6,10,4,'#e8382f');r(4,8,16,9,'#ffcf9f');r(14,11,4,3,'#1d1d2b');
+  r(2,17,20,9,'#e8382f');r(2,24,20,6,'#2f7de1');r(2+w,30,9,3,'#5a3a1a');r(13-w,30,9,3,'#5a3a1a');
+}
+
+/* ===== ควบคุม (คีย์บอร์ด + ปุ่มมือถือ) ===== */
+const KM={ArrowLeft:'l',a:'l',A:'l',ArrowRight:'r',d:'r',D:'r',ArrowUp:'j',w:'j',W:'j',' ':'j'};
+addEventListener('keydown',e=>{const k=KM[e.key];if(k){keys[k]=1;e.preventDefault()}});
+addEventListener('keyup',e=>{const k=KM[e.key];if(k)keys[k]=0});
+[['bl','l'],['br','r'],['bj','j']].forEach(([id,k])=>{const b=$(id);
+  b.addEventListener('pointerdown',e=>{e.preventDefault();audio();keys[k]=1});
+  ['pointerup','pointerleave','pointercancel'].forEach(t=>b.addEventListener(t,()=>keys[k]=0))});
+</script>
+</body>
+</html>
